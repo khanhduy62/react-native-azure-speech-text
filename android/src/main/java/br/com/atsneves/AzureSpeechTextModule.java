@@ -1,48 +1,45 @@
 package br.com.atsneves;
 
-import android.media.AudioTrack;
 import android.media.MediaPlayer;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
 
-import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
-import com.facebook.react.bridge.Callback;
 
+
+import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.microsoft.cognitiveservices.speech.AudioDataStream;
-import com.microsoft.cognitiveservices.speech.ResultReason;
 import com.microsoft.cognitiveservices.speech.SpeechConfig;
-import com.microsoft.cognitiveservices.speech.SpeechSynthesisCancellationDetails;
 import com.microsoft.cognitiveservices.speech.SpeechSynthesisEventArgs;
 import com.microsoft.cognitiveservices.speech.SpeechSynthesisResult;
 import com.microsoft.cognitiveservices.speech.SpeechSynthesizer;
 import com.microsoft.cognitiveservices.speech.StreamStatus;
 import com.microsoft.cognitiveservices.speech.audio.AudioConfig;
-import com.microsoft.cognitiveservices.speech.audio.AudioInputStream;
 import com.microsoft.cognitiveservices.speech.util.EventHandler;
+
+import com.microsoft.cognitiveservices.speech.SpeechRecognizer;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Dictionary;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-
-import static com.microsoft.cognitiveservices.speech.SpeechSynthesisOutputFormat.Audio16Khz128KBitRateMonoMp3;
 
 
+public class AzureSpeechTextModule extends ReactContextBaseJavaModule {
 
-
-public class TextToSpeechEdgeModule extends ReactContextBaseJavaModule{
+    String speechSubscriptionKey = "";
+    String speechRegion = "";
 
     private final ReactApplicationContext reactContext;
 
@@ -52,20 +49,101 @@ public class TextToSpeechEdgeModule extends ReactContextBaseJavaModule{
     private SpeechSynthesisEventArgs stopArgs;
     private Object stopObject;
     private MediaPlayer mediaPlayer = new MediaPlayer();
-    public TextToSpeechEdgeModule(ReactApplicationContext reactContext) {
+
+    public AzureSpeechTextModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
     }
 
-    @Override
-    public String getName() {
-        return "TextToSpeechEdge";
+    public interface OnListeningSpeech {
+        void onRegconize(String text);
+
+        void onError(String error);
     }
 
-    @ReactMethod
-    public void sampleMethod(String stringArgument, int numberArgument, Callback callback) {
-        // TODO: Implement some actually useful functionality
-        callback.invoke("Received numberArgument: " + numberArgument + " stringArgument: " + stringArgument);
+    @Override
+    public String getName() {
+        return "AzureSpeechText";
+    }
+
+    private SpeechRecognizer reco = null;
+    private AudioConfig audioInput = null;
+    private MicrophoneStream microphoneStream;
+
+    private MicrophoneStream createMicrophoneStream() {
+        if (microphoneStream != null) {
+            microphoneStream.close();
+            microphoneStream = null;
+        }
+
+        microphoneStream = new MicrophoneStream();
+        return microphoneStream;
+    }
+
+    boolean continuousListeningStarted = false;
+
+    public void onListen(AzureSpeechTextModule.OnListeningSpeech listener, String subkey, String region) {
+
+        final SpeechConfig speechConfig = SpeechConfig.fromSubscription(subkey, region);
+        if (continuousListeningStarted) {
+            return;
+        }
+
+        continuousListeningStarted = true;
+
+        try {
+            audioInput = AudioConfig.fromStreamInput(createMicrophoneStream());
+            reco = new SpeechRecognizer(speechConfig, audioInput);
+
+            reco.recognizing.addEventListener((o, speechRecognitionResultEventArgs) -> {
+                final String s = speechRecognitionResultEventArgs.getResult().getText();
+                Log.d("recognizing", s);
+            });
+
+            reco.recognized.addEventListener((o, speechRecognitionResultEventArgs) -> {
+                final String s = speechRecognitionResultEventArgs.getResult().getText();
+                listener.onRegconize(s);
+                Log.d("recognized", s);
+            });
+
+            final Future<Void> task = reco.startContinuousRecognitionAsync();
+            setOnTaskCompletedListener(task, result -> {
+                continuousListeningStarted = true;
+            });
+        } catch (Exception ex) {
+            listener.onError(ex.toString());
+            Log.d("ExceptionLog", ex.toString());
+        }
+    }
+
+    public void onStop() {
+        if (reco != null) {
+            final Future<Void> task = reco.stopContinuousRecognitionAsync();
+            setOnTaskCompletedListener(task, result -> {
+                continuousListeningStarted = false;
+            });
+        } else {
+            continuousListeningStarted = false;
+        }
+    }
+
+
+    private <T> void setOnTaskCompletedListener(Future<T> task, OnTaskCompletedListener<T> listener) {
+        s_executorService.submit(() -> {
+            T result = task.get();
+            listener.onCompleted(result);
+            return null;
+        });
+    }
+
+    private interface OnTaskCompletedListener<T> {
+        void onCompleted(T taskResult);
+    }
+
+    private static ExecutorService s_executorService;
+
+    static {
+        s_executorService = Executors.newCachedThreadPool();
     }
 
     private void playWav(byte[] mp3SoundByteArray) {
@@ -77,26 +155,19 @@ public class TextToSpeechEdgeModule extends ReactContextBaseJavaModule{
             fos.write(mp3SoundByteArray);
             fos.close();
 
-            // resetting mediaplayer instance to evade problems
             mediaPlayer.reset();
 
-            // In case you run into issues with threading consider new instance like:
-            // MediaPlayer mediaPlayer = new MediaPlayer();
 
-            // Tried passing path directly, but kept getting
-            // "Prepare failed.: status=0x1"
-            // so using file descriptor instead
             FileInputStream fis = new FileInputStream(tempMp3);
             mediaPlayer.setDataSource(fis.getFD());
             mediaPlayer.prepare();
             mediaPlayer.start();
 
-
             mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                 @Override
                 public void onCompletion(MediaPlayer mediaPlayer) {
                     Log.d("Audio Stop", mediaPlayer.toString());
-                    sendEvent(reactContext, "ttedge-finish", null );
+                    sendEvent(reactContext, "ttedge-finish", null);
                 }
             });
 
@@ -111,11 +182,11 @@ public class TextToSpeechEdgeModule extends ReactContextBaseJavaModule{
     public ReturnSpeak synthesis(String inputText, String ssmlText, String speechSubscriptionKey, String serviceRegion, String voiceName) {
         // Initialize speech synthesizer and its dependencies
         speechConfig = SpeechConfig.fromSubscription(speechSubscriptionKey, serviceRegion);
-        speechConfig.setSpeechSynthesisVoiceName(voiceName.isEmpty() ? "en-US-AriaNeural" : voiceName );
-        assert(speechConfig != null);
+        speechConfig.setSpeechSynthesisVoiceName(voiceName.isEmpty() ? "en-US-AriaNeural" : voiceName);
+        assert (speechConfig != null);
 
         synthesizer = new SpeechSynthesizer(speechConfig, null);
-        assert(synthesizer != null);
+        assert (synthesizer != null);
 
         synthesizer.Synthesizing.addEventListener(new EventHandler<SpeechSynthesisEventArgs>() {
             @Override
@@ -171,48 +242,47 @@ public class TextToSpeechEdgeModule extends ReactContextBaseJavaModule{
 
         } catch (Exception ex) {
             Log.e("SpeechSDKDemo", "unexpected " + ex.getMessage());
-            assert(false);
+            assert (false);
         }
 
         return new ReturnSpeak(false, "No synthesis");
     }
 
     @ReactMethod
-    public void createTextToSpeechByText(String text, String voiceName, String key, String region, Promise promise) {
-        try
-        {
+    public void speechToText(Promise promise) {
+        onListen(new OnListeningSpeech() {
+            @Override
+            public void onRegconize(String text) {
+                onStop();
+                promise.resolve(text);
+            }
+
+            @Override
+            public void onError(String error) {
+                promise.reject("ToText_Error", error);
+            }
+        }, speechSubscriptionKey, speechRegion);
+    }
+
+    @ReactMethod
+    public void textToSpeech(String text, String voiceName, String key, String region, Promise promise) {
+        try {
             // Initialize speech synthesizer and its dependencies
-            ReturnSpeak speak = synthesis(text, "",key, region, voiceName);
+            ReturnSpeak speak = synthesis(text, "", key, region, voiceName);
 
             if (!speak.isSuccess()) {
-                promise.reject("no_events", speak.getErrorMessage());
+                promise.reject("ToSpeech_Error", speak.getErrorMessage());
             } else {
                 promise.resolve(true);
             }
         } catch (Exception error) {
-            promise.reject("no_events", error.getMessage(),error.getCause());
+            promise.reject("ToSpeech_Error", error.getMessage(), error.getCause());
         }
     }
+
     @ReactMethod
-    public void stopEdge() {
+    public void stopSpeech() {
         mediaPlayer.stop();
-    }
-
-    @ReactMethod
-    public void createTextToSpeechBySSML(String ssml, String voiceName, String key, String region, Promise promise) {
-        try
-        {
-            // Initialize speech synthesizer and its dependencies
-            ReturnSpeak speak = synthesis("", ssml,key, region, voiceName);
-
-            if (!speak.isSuccess()) {
-                promise.reject("no_events", speak.getErrorMessage());
-            } else {
-                promise.resolve(true);
-            }
-        } catch (Exception error) {
-            promise.reject("no_events", error.getMessage(),error.getCause());
-        }
     }
 
     private void sendEvent(ReactContext reactContext,
@@ -223,4 +293,9 @@ public class TextToSpeechEdgeModule extends ReactContextBaseJavaModule{
                 .emit(eventName, params);
     }
 
+    @ReactMethod
+    public void config(ReadableMap params) {
+        speechRegion = params.getString("region").toString();
+        speechSubscriptionKey = params.getString("subscription").toString();
+    }
 }
