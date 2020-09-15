@@ -8,7 +8,6 @@
     NSString * sub;
     NSString * region;
     NSString * ignoreSilentSwitch;
-    SPXSpeechRecognizer * speechRecognizer;
 }
 
 RCT_EXPORT_MODULE(AzureSpeechText)
@@ -31,7 +30,7 @@ RCT_EXPORT_METHOD(stopTextToSpeech)
 
 RCT_EXPORT_METHOD(stopSpeechToText)
 {
-    [speechRecognizer stopContinuousRecognition];
+    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
 }
 
 RCT_EXPORT_METHOD(textToSpeech:(NSString *)text withVoiceName:(nonnull NSString *)voiceName resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
@@ -105,7 +104,7 @@ RCT_REMAP_METHOD(speechToText,
         reject(code, message, error);
     }
 
-    speechRecognizer = [[SPXSpeechRecognizer alloc] init:speechConfig];
+    SPXSpeechRecognizer * speechRecognizer = [[SPXSpeechRecognizer alloc] init:speechConfig];
     if (!speechRecognizer) {
         NSString * code = @"Recognizer_Failure";
         NSString * message = @"Could not create speech recognizer";
@@ -114,6 +113,8 @@ RCT_REMAP_METHOD(speechToText,
                             code:500
                             userInfo:@{NSLocalizedDescriptionKey:@"Could not create speech recognizer"}
                             ];
+        [speechRecognizer stopContinuousRecognition];
+        [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
         reject(code, message, error);
     }
 
@@ -129,6 +130,8 @@ RCT_REMAP_METHOD(speechToText,
                             code:500
                             userInfo:@{NSLocalizedDescriptionKey:@""}
                             ];
+        [speechRecognizer stopContinuousRecognition];
+        [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
         reject(code, message, error);
     } else if (SPXResultReason_RecognizedSpeech == speechResult.reason) {
         [speechRecognizer stopContinuousRecognition];
