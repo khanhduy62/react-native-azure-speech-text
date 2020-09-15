@@ -79,11 +79,11 @@ RCT_EXPORT_METHOD(textToSpeech:(NSString *)text withVoiceName:(nonnull NSString 
         resolve(@(YES));
     } else {
         NSString * code = @"ToSpeech_Error";
-        NSString * message = @"There was an error.";
+        NSString * message = @"There was an error to speech.";
         NSError * error  = [
-                            NSError errorWithDomain:@"There was an error."
+                            NSError errorWithDomain:@"There was an error to speech."
                             code:500
-                            userInfo:@{NSLocalizedDescriptionKey:@"There was an error."}
+                            userInfo:@{NSLocalizedDescriptionKey:@"There was an error to speech."}
                             ];
         reject(code, message, error);
     }
@@ -136,11 +136,11 @@ RCT_REMAP_METHOD(speechToText,
         resolve(speechResult.text);
     } else {
         NSString * code = @"ToText_Error";
-        NSString * message = @"There was an error.";
+        NSString * message = @"There was an error to text.";
         NSError * error  = [
-                            NSError errorWithDomain:@"There was an error."
+                            NSError errorWithDomain:@"There was an error to text."
                             code:500
-                            userInfo:@{NSLocalizedDescriptionKey:@"There was an error."}
+                            userInfo:@{NSLocalizedDescriptionKey:@"There was an error to text."}
                             ];
         [speechRecognizer stopContinuousRecognition];
         [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
