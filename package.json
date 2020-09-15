@@ -1,7 +1,7 @@
 {
-  "name": "react-native-text-to-speech-edge",
-  "title": "React Native Text To Speech Edge",
-  "version": "1.0.5",
+  "name": "react-native-azure-speech-text",
+  "title": "React Native Speech Text",
+  "version": "1.0.6",
   "description": "TODO",
   "main": "index.js",
   "files": [
@@ -9,7 +9,7 @@
     "android",
     "index.js",
     "ios",
-    "react-native-text-to-speech-edge.podspec"
+    "react-native-azure-speech-text.podspec"
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -17,8 +17,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/atsneves/react-native-text-to-speech-edge.git",
-    "baseUrl": "https://github.com/atsneves/react-native-text-to-speech-edge"
+    "url": "git+https://github.com/phithu/react-native-azure-speech-text",
+    "baseUrl": "https://github.com/phithu/react-native-azure-speech-text"
   },
   "keywords": [
     "react-native",
@@ -33,7 +33,6 @@
     "speech neural",
     "text to speech",
     "microsoft neural",
-    "react-native-text-to-speech",
     "azure",
     "cognitive-services"
   ],
@@ -49,7 +48,7 @@
     "react-native": "^0.61.5"
   },
   "bugs": {
-    "url": "https://github.com/atsneves/react-native-text-to-speech-edge/issues"
+    "url": "https://github.com/phithu/react-native-azure-speech-text/issues"
   },
-  "homepage": "https://github.com/atsneves/react-native-text-to-speech-edge#readme"
+  "homepage": "https://github.com/phithu/react-native-azure-speech-text#readme"
 }
