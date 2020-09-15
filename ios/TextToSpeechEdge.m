@@ -1,7 +1,7 @@
 #import <React/RCTBridge.h>
 #import <React/RCTEventDispatcher.h>
 #import <React/RCTLog.h>
-#import "RNAzureSpeechText.h"
+#import "TextToSpeechEdge.h"
 #import <MicrosoftCognitiveServicesSpeech/SPXSpeechApi.h>
 
 @implementation TextToSpeechEdge {
@@ -32,7 +32,7 @@ RCT_EXPORT_METHOD(textToSpeech:(NSString *)text withVoiceName:(nonnull NSString 
 {
   SPXSpeechConfiguration *speechConfig = [[SPXSpeechConfiguration alloc] initWithSubscription:sub region:region];
   if (!speechConfig) {
-    NSString * code = @"500";
+    NSString * code = @"SPXSpeechConfiguration_Failure";
     NSString * message = @"Could not load speech config";
     NSError * error  = [
                         NSError errorWithDomain:@"Could not load speech config"
@@ -50,7 +50,7 @@ RCT_EXPORT_METHOD(textToSpeech:(NSString *)text withVoiceName:(nonnull NSString 
   if (SPXResultReason_Canceled == speechResult.reason) {
     SPXSpeechSynthesisCancellationDetails *details = [[SPXSpeechSynthesisCancellationDetails alloc] initFromCanceledSynthesisResult:speechResult];
     NSLog(@"Speech synthesis was canceled: %@. Did you pass the correct key/region combination?", details.errorDetails);
-    NSString * code = @"500";
+    NSString * code = @"SPXResultReason_Canceled";
     NSString * message = @"Speech synthesis was canceled: %@. Did you pass the correct key/region combination?";
     NSError * error  = [
                         NSError errorWithDomain:@"Speech synthesis was canceled: %@. Did you pass the correct key/region combination?"
@@ -72,7 +72,7 @@ RCT_EXPORT_METHOD(textToSpeech:(NSString *)text withVoiceName:(nonnull NSString 
 
     resolve(@(YES));
   } else {
-    NSString * code = @"500";
+    NSString * code = @"ToSpeech_Error";
     NSString * message = @"There was an error.";
     NSError * error  = [
                         NSError errorWithDomain:@"There was an error."
@@ -89,7 +89,7 @@ RCT_REMAP_METHOD(speechToText,
   [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayAndRecord error:nil];
   SPXSpeechConfiguration *speechConfig = [[SPXSpeechConfiguration alloc] initWithSubscription:sub region:region];
   if (!speechConfig) {
-    NSString * code = @"500";
+    NSString * code = @"SPXSpeechConfiguration_Failure";
     NSString * message = @"Could not load speech config";
     NSError * error  = [
                         NSError errorWithDomain:@"Could not load speech config"
@@ -101,7 +101,7 @@ RCT_REMAP_METHOD(speechToText,
 
   SPXSpeechRecognizer* speechRecognizer = [[SPXSpeechRecognizer alloc] init:speechConfig];
   if (!speechRecognizer) {
-    NSString * code = @"500";
+    NSString * code = @"Recognizer_Failure";
     NSString * message = @"Could not create speech recognizer";
     NSError * error  = [
                         NSError errorWithDomain:@"Could not create speech recognizer"
@@ -116,7 +116,7 @@ RCT_REMAP_METHOD(speechToText,
     SPXCancellationDetails *details = [[SPXCancellationDetails alloc] initFromCanceledRecognitionResult:speechResult];
     NSLog(@"Speech recognition was canceled: %@. Did you pass the correct key/region combination?", details.errorDetails);
 
-    NSString * code = @"500";
+    NSString * code = @"SPXResultReason_Canceled";
     NSString * message = @"Speech recognition was canceled: %@. Did you pass the correct key/region combination?";
     NSError * error  = [
                         NSError errorWithDomain:@"Speech recognition was canceled: %@. Did you pass the correct key/region combination?"
@@ -129,7 +129,7 @@ RCT_REMAP_METHOD(speechToText,
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
     resolve(speechResult.text);
   } else {
-    NSString * code = @"500";
+    NSString * code = @"ToText_Error";
     NSString * message = @"There was an error.";
     NSError * error  = [
                         NSError errorWithDomain:@"There was an error."
