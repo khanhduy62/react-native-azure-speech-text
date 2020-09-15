@@ -1,5 +1,5 @@
-package com.awesomeproject;
-//
+package br.com.atsneves;
+
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -20,9 +20,7 @@ public class AzureSpeechTextPackage implements ReactPackage {
     public List<NativeModule> createNativeModules(
             ReactApplicationContext reactContext) {
         List<NativeModule> modules = new ArrayList<>();
-
         modules.add(new AzureSpeechTextModule(reactContext));
-
         return modules;
     }
 
