@@ -280,10 +280,15 @@ public class AzureSpeechTextModule extends ReactContextBaseJavaModule {
         }
     }
 
-    @ReactMethod
-    public void stopSpeech() {
-        mediaPlayer.stop();
-    }
+      @ReactMethod
+       public void stopTextToSpeech() {
+          mediaPlayer.stop();
+       }
+
+       @ReactMethod
+       public void stopSpeechToText() {
+          onStop();
+       }
 
     private void sendEvent(ReactContext reactContext,
                            String eventName,

@@ -23,9 +23,16 @@ RCT_EXPORT_METHOD(config:(NSDictionary *)params) {
   return @[@"tts-start", @"ttedge-finish", @"tts-pause", @"tts-resume", @"tts-progress", @"tts-cancel"];
 }
 
-RCT_EXPORT_METHOD(stopSpeech)
+RCT_EXPORT_METHOD(stopTextToSpeech)
 {
   [_player stop];
+
+}
+
+RCT_EXPORT_METHOD(stopSpeechToText)
+{
+  [speechRecognizer stopContinuousRecognition];
+
 }
 
 RCT_EXPORT_METHOD(textToSpeech:(NSString *)text withVoiceName:(nonnull NSString *)voiceName resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)

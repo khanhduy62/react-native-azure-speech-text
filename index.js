@@ -30,8 +30,12 @@ export default class RNAzureSpeechText {
     AzureSpeechTextEmitter.addListener(eventName, callback);
   }
 
-  static stopSpeech() {
-    AzureSpeechText.stopSpeech();
+  static stopSpeechToText() {
+    AzureSpeechText.stopSpeechToText();
+  }
+
+  static stopToTextSpeech() {
+    AzureSpeechText.stopToTextSpeech();
   }
 }
 
