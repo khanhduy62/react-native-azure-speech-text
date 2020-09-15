@@ -30,6 +30,9 @@ RCT_EXPORT_METHOD(stopTextToSpeech)
 
 RCT_EXPORT_METHOD(stopSpeechToText)
 {
+    SPXSpeechConfiguration *speechConfig = [[SPXSpeechConfiguration alloc] initWithSubscription:sub region:region];
+    SPXSpeechRecognizer * speechRecognizer = [[SPXSpeechRecognizer alloc] init:speechConfig];
+    [speechRecognizer stopContinuousRecognition];
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
 }
 
@@ -113,8 +116,6 @@ RCT_REMAP_METHOD(speechToText,
                             code:500
                             userInfo:@{NSLocalizedDescriptionKey:@"Could not create speech recognizer"}
                             ];
-        [speechRecognizer stopContinuousRecognition];
-        [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
         reject(code, message, error);
     }
 
@@ -130,12 +131,12 @@ RCT_REMAP_METHOD(speechToText,
                             code:500
                             userInfo:@{NSLocalizedDescriptionKey:@""}
                             ];
-        [speechRecognizer stopContinuousRecognition];
         [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
+        [speechRecognizer stopContinuousRecognition];
         reject(code, message, error);
     } else if (SPXResultReason_RecognizedSpeech == speechResult.reason) {
-        [speechRecognizer stopContinuousRecognition];
         [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
+        [speechRecognizer stopContinuousRecognition];
         resolve(speechResult.text);
     } else {
         NSString * code = @"ToText_Error";
@@ -145,8 +146,8 @@ RCT_REMAP_METHOD(speechToText,
                             code:500
                             userInfo:@{NSLocalizedDescriptionKey:@"There was an error to text."}
                             ];
-        [speechRecognizer stopContinuousRecognition];
         [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
+        [speechRecognizer stopContinuousRecognition];
         reject(code, message, error);
     }
 }
