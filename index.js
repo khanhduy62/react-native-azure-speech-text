@@ -14,7 +14,7 @@ export default class RNAzureSpeechText {
   }
 
   static async speechToText() {
-    await AzureSpeechText.speechToText();
+    return await AzureSpeechText.speechToText();
   }
 
   static async textToSpeech(text, voiceName) {
