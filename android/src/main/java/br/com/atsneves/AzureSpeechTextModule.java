@@ -265,10 +265,10 @@ public class AzureSpeechTextModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void textToSpeech(String text, String voiceName, String key, String region, Promise promise) {
+    public void textToSpeech(String text, String voiceName, Promise promise) {
         try {
             // Initialize speech synthesizer and its dependencies
-            ReturnSpeak speak = synthesis(text, "", key, region, voiceName);
+            ReturnSpeak speak = synthesis(text, "", speechSubscriptionKey, speechRegion, voiceName);
 
             if (!speak.isSuccess()) {
                 promise.reject("ToSpeech_Error", speak.getErrorMessage());

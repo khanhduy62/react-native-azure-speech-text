@@ -1,24 +1,28 @@
-import { NativeModules, NativeEventEmitter } from 'react-native'
+import {
+  NativeModules,
+  NativeEventEmitter,
+} from "react-native";
 
-const { TextToSpeechEdge } = NativeModules;
+const { AzureSpeechText } = NativeModules;
 
-export const { createTextToSpeechBySSML, createTextToSpeechByText, stopEdge } = TextToSpeechEdge
+const AzureSpeechTextEmitter = new NativeEventEmitter(AzureSpeechText);
 
+export default class RNAzureSpeechText {
 
-class TSEdge extends NativeEventEmitter {
-    constructor() {
-        super(TextToSpeechEdge);
-        console.log('this', TextToSpeechEdge);
-      }
-    
-      addEventListener(type, handler) {
-        return this.addListener(type, handler);
-      }
-    
-      removeEventListener(type, handler) {
-        this.removeListener(type, handler);
-      }
-} 
+  static config(params) {
+    AzureSpeechText.config(params);
+  }
 
-export default new TSEdge();
+  static async speechToText() {
+    await AzureSpeechText.speechToText();
+  }
+
+  static async textToSpeech(text, voiceName) {
+    await AzureSpeechText.textToSpeech(text, voiceName);
+  }
+
+  static addListener(eventName, callback) {
+    AzureSpeechTextEmitter.addListener(eventName, callback);
+  }
+}
 

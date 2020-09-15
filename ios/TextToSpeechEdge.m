@@ -1,130 +1,150 @@
 #import <React/RCTBridge.h>
 #import <React/RCTEventDispatcher.h>
 #import <React/RCTLog.h>
-
-
-#import "TextToSpeechEdge.h"
+#import "RNAzureSpeechText.h"
 #import <MicrosoftCognitiveServicesSpeech/SPXSpeechApi.h>
 
-@implementation TextToSpeechEdge
+@implementation TextToSpeechEdge {
+  NSString * sub;
+  NSString * region;
+  NSString * ignoreSilentSwitch;
+}
 
-RCT_EXPORT_MODULE()
+RCT_EXPORT_MODULE(AzureSpeechText)
+
+RCT_EXPORT_METHOD(config:(NSDictionary *)params) {
+  sub = params[@"subscription"];
+  region = params[@"region"];
+  ignoreSilentSwitch = [params objectForKey:@"ignoreSilentSwitch"] ? params[@"ignoreSilentSwitch"]: @"ignore";
+}
 
 -(NSArray<NSString *> *)supportedEvents
 {
-    return @[@"tts-start", @"ttedge-finish", @"tts-pause", @"tts-resume", @"tts-progress", @"tts-cancel"];
+  return @[@"tts-start", @"ttedge-finish", @"tts-pause", @"tts-resume", @"tts-progress", @"tts-cancel"];
 }
 
-- (NSDictionary*)synthesis:(NSString*)inputText withSSML:(NSString*)ssmlString withKey:(NSString*)speechKey andServiceRegion:(NSString*)serviceRegion andVoiceName:(NSString*)voiceName{
-    
-    @try {
-        SPXSpeechConfiguration *speechConfig = [[SPXSpeechConfiguration alloc] initWithSubscription:speechKey region:serviceRegion];
-        
-        [speechConfig setSpeechSynthesisVoiceName:[voiceName isEqualToString:@""] ? @"en-US-AriaNeural" : voiceName];
+RCT_EXPORT_METHOD(stopSpeech)
+{
+  [_player stop];
+}
 
-        SPXSpeechSynthesizer *speechSynthesizer = [[SPXSpeechSynthesizer alloc] initWithSpeechConfiguration:speechConfig audioConfiguration:nil];
-        
-        SPXSpeechSynthesisResult *speechResult;
-        
-        NSError *err;
-        
-        if ([ssmlString isEqualToString:@""])
-            speechResult = [speechSynthesizer speakText:inputText error:&err];
-        else
-            speechResult = [speechSynthesizer speakSsml:ssmlString error:&err];
-        
-        if (err) {
-            return @{@"success": @(NO), @"errorMessage": err.description};
-        }
-        
-        // Checks result.
-        if (SPXResultReason_Canceled == speechResult.reason) {
-            SPXSpeechSynthesisCancellationDetails *details = [[SPXSpeechSynthesisCancellationDetails alloc] initFromCanceledSynthesisResult:speechResult];
-            NSLog(@"Speech synthesis was canceled: %@. Did you pass the correct key/region combination?", details.errorDetails);
-            return @{@"success": @(NO), @"errorMessage": details.errorDetails};
-        } else if (SPXResultReason_SynthesizingAudioCompleted == speechResult.reason) {
-            NSLog(@"Speech synthesis was completed");
-            // Play audio.
-            NSError *error;
-            _player = [[AVAudioPlayer alloc] initWithData:[speechResult audioData] error:&error];
-            if (error) {
-                return @{@"success": @(NO), @"errorMessage": error.description};
-            }
-            
-            _player.delegate = self;
-            [_player prepareToPlay];
-            [_player play];
-            return @{@"success": @(YES), @"errorMessage": @""};
-        } else {
-            NSLog(@"There was an error.");
-            return @{@"success": @(NO), @"errorMessage": @"No Synthesis"};
-        }
-    } @catch (NSException *exception) {
-        return @{@"success": @(NO), @"errorMessage": exception.description};
+RCT_EXPORT_METHOD(textToSpeech:(NSString *)text withVoiceName:(nonnull NSString *)voiceName resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+  SPXSpeechConfiguration *speechConfig = [[SPXSpeechConfiguration alloc] initWithSubscription:sub region:region];
+  if (!speechConfig) {
+    NSString * code = @"500";
+    NSString * message = @"Could not load speech config";
+    NSError * error  = [
+                        NSError errorWithDomain:@"Could not load speech config"
+                        code:500
+                        userInfo:@{NSLocalizedDescriptionKey:@"Could not load speech config"}
+                        ];
+    reject(code, message, error);
+  }
+
+  [speechConfig setSpeechSynthesisVoiceName:[voiceName isEqualToString:@""] ? @"en-US-AriaNeural" : voiceName];
+  SPXSpeechSynthesizer *speechSynthesizer = [[SPXSpeechSynthesizer alloc] initWithSpeechConfiguration:speechConfig audioConfiguration:nil];
+
+  SPXSpeechSynthesisResult *speechResult = [speechSynthesizer speakText:text];
+
+  if (SPXResultReason_Canceled == speechResult.reason) {
+    SPXSpeechSynthesisCancellationDetails *details = [[SPXSpeechSynthesisCancellationDetails alloc] initFromCanceledSynthesisResult:speechResult];
+    NSLog(@"Speech synthesis was canceled: %@. Did you pass the correct key/region combination?", details.errorDetails);
+    NSString * code = @"500";
+    NSString * message = @"Speech synthesis was canceled: %@. Did you pass the correct key/region combination?";
+    NSError * error  = [
+                        NSError errorWithDomain:@"Speech synthesis was canceled: %@. Did you pass the correct key/region combination?"
+                        code:500
+                        userInfo:@{NSLocalizedDescriptionKey:@"Speech synthesis was canceled: %@. Did you pass the correct key/region combination?"}
+                        ];
+    reject(code, message, error);
+  } else if (SPXResultReason_SynthesizingAudioCompleted == speechResult.reason) {
+    if([ignoreSilentSwitch isEqualToString:@"ignore"]) {
+      [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:nil];
+    } else if([ignoreSilentSwitch isEqualToString:@"obey"]) {
+      [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
     }
-    
+
+    _player = [[AVAudioPlayer alloc] initWithData:[speechResult audioData] error:nil];
+    _player.delegate = self;
+    [_player prepareToPlay];
+    [_player play];
+
+    resolve(@(YES));
+  } else {
+    NSString * code = @"500";
+    NSString * message = @"There was an error.";
+    NSError * error  = [
+                        NSError errorWithDomain:@"There was an error."
+                        code:500
+                        userInfo:@{NSLocalizedDescriptionKey:@"There was an error."}
+                        ];
+    reject(code, message, error);
+  }
 }
 
-RCT_EXPORT_METHOD(stopEdge)
-{
-    [_player stop];
-}
+RCT_REMAP_METHOD(speechToText,
+                 resolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject) {
+  [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayAndRecord error:nil];
+  SPXSpeechConfiguration *speechConfig = [[SPXSpeechConfiguration alloc] initWithSubscription:sub region:region];
+  if (!speechConfig) {
+    NSString * code = @"500";
+    NSString * message = @"Could not load speech config";
+    NSError * error  = [
+                        NSError errorWithDomain:@"Could not load speech config"
+                        code:500
+                        userInfo:@{NSLocalizedDescriptionKey:@"Could not load speech config"}
+                        ];
+    reject(code, message, error);
+  }
 
-RCT_EXPORT_METHOD(createTextToSpeechByText:(NSString *)text withVoiceName:(nonnull NSString *)voiceName andKey:(NSString*)key andRegion:(NSString*)region resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-{
-    // TODO: Implement some actually useful functionality
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
-       @try {
-         NSDictionary *dictSyn = [self synthesis:text withSSML:@"" withKey:key andServiceRegion:region andVoiceName:voiceName];
-           
-         if ([[dictSyn objectForKey:@"success"] boolValue]) {
-             return resolve(@(YES));
-         } else {
-             NSError *error = [NSError errorWithDomain:@"world" code:400 userInfo:@{ @"errorDetail" : [dictSyn objectForKey:@"errorMessage"]}];
-             
-             reject(@"no_events", [dictSyn objectForKey:@"errorMessage"], error);
-         }
-         
-       }
-       @catch (NSException * e) {
-         NSError *error = [NSError errorWithDomain:e.name code:0 userInfo:@{
-         NSUnderlyingErrorKey: e,
-         NSDebugDescriptionErrorKey: e.userInfo ?: @{ },
-         NSLocalizedFailureReasonErrorKey: (e.reason ?: @"???") }];
-         reject(@"no_events", @"There were no events", error);
-       }
-    });
-}
+  SPXSpeechRecognizer* speechRecognizer = [[SPXSpeechRecognizer alloc] init:speechConfig];
+  if (!speechRecognizer) {
+    NSString * code = @"500";
+    NSString * message = @"Could not create speech recognizer";
+    NSError * error  = [
+                        NSError errorWithDomain:@"Could not create speech recognizer"
+                        code:500
+                        userInfo:@{NSLocalizedDescriptionKey:@"Could not create speech recognizer"}
+                        ];
+    reject(code, message, error);
+  }
 
-RCT_EXPORT_METHOD(createTextToSpeechBySSML:(NSString *)ssml withVoiceName:(nonnull NSString *)voiceName andKey:(NSString*)key andRegion:(NSString*)region resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-{
-    // TODO: Implement some actually useful functionality
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_DEFAULT, 0), ^{
-       @try {
-         NSDictionary *dictSyn = [self synthesis:@"" withSSML:ssml withKey:key andServiceRegion:region andVoiceName:voiceName];
-           
-         if ([dictSyn objectForKey:@"success"]) {
-             return resolve(@(YES));
-         } else {
-             NSError *error = [[NSError alloc] init];
-             
-             reject(@"no_events", [dictSyn objectForKey:@"errorMessage"], error);
-         }
-         
-       }
-       @catch (NSException * e) {
-         NSError *error = [NSError errorWithDomain:e.name code:0 userInfo:@{
-         NSUnderlyingErrorKey: e,
-         NSDebugDescriptionErrorKey: e.userInfo ?: @{ },
-         NSLocalizedFailureReasonErrorKey: (e.reason ?: @"???") }];
-         reject(@"no_events", @"There were no events", error);
-       }
-    });
+  SPXSpeechRecognitionResult *speechResult = [speechRecognizer recognizeOnce];
+  if (SPXResultReason_Canceled == speechResult.reason) {
+    SPXCancellationDetails *details = [[SPXCancellationDetails alloc] initFromCanceledRecognitionResult:speechResult];
+    NSLog(@"Speech recognition was canceled: %@. Did you pass the correct key/region combination?", details.errorDetails);
+
+    NSString * code = @"500";
+    NSString * message = @"Speech recognition was canceled: %@. Did you pass the correct key/region combination?";
+    NSError * error  = [
+                        NSError errorWithDomain:@"Speech recognition was canceled: %@. Did you pass the correct key/region combination?"
+                        code:500
+                        userInfo:@{NSLocalizedDescriptionKey:@""}
+                        ];
+    reject(code, message, error);
+  } else if (SPXResultReason_RecognizedSpeech == speechResult.reason) {
+    [speechRecognizer stopContinuousRecognition];
+    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
+    resolve(speechResult.text);
+  } else {
+    NSString * code = @"500";
+    NSString * message = @"There was an error.";
+    NSError * error  = [
+                        NSError errorWithDomain:@"There was an error."
+                        code:500
+                        userInfo:@{NSLocalizedDescriptionKey:@"There was an error."}
+                        ];
+    [speechRecognizer stopContinuousRecognition];
+    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
+    reject(code, message, error);
+  }
 }
 
 - (void)audioPlayerDidFinishPlaying:(AVAudioPlayer *)player successfully:(BOOL)flag
 {
-    [self sendEventWithName:@"ttedge-finish" body:@{@"name": @"ttedge-finish"}];
+  [self sendEventWithName:@"ttedge-finish" body:@{@"name": @"ttedge-finish"}];
 }
 
 @end
