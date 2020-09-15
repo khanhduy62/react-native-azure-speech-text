@@ -34,8 +34,8 @@ export default class RNAzureSpeechText {
     AzureSpeechText.stopSpeechToText();
   }
 
-  static stopToTextSpeech() {
-    AzureSpeechText.stopToTextSpeech();
+  static stopTextToSpeech() {
+    AzureSpeechText.stopTextToSpeech();
   }
 }
 
