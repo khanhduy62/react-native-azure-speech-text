@@ -14,7 +14,12 @@ export default class RNAzureSpeechText {
   }
 
   static async speechToText() {
-    return await AzureSpeechText.speechToText();
+    let text = await AzureSpeechText.speechToText();
+    if (text) {
+      text = text.replace(".", "");
+      text = text.toLowerCase();
+    }
+    return text;
   }
 
   static async textToSpeech(text, voiceName = "en-US-AriaNeural") {
