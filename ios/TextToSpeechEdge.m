@@ -30,9 +30,6 @@ RCT_EXPORT_METHOD(stopTextToSpeech)
 
 RCT_EXPORT_METHOD(stopSpeechToText)
 {
-    SPXSpeechConfiguration *speechConfig = [[SPXSpeechConfiguration alloc] initWithSubscription:sub region:region];
-    SPXSpeechRecognizer * speechRecognizer = [[SPXSpeechRecognizer alloc] init:speechConfig];
-    [speechRecognizer stopContinuousRecognition];
     [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryAmbient error:nil];
 }
 
